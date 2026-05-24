@@ -18,25 +18,18 @@ jobs:
 
     - name: Download Clean Forge MDK
       run: |
-        # Скачиваем официальный проверенный шаблон для 1.16.5
         curl -L -o forge-mdk.zip https://maven.minecraftforge.net/net/minecraftforge/forge/1.16.5-36.2.34/forge-1.16.5-36.2.34-mdk.zip
         mkdir forge-project
         unzip forge-mdk.zip -d forge-project
-        
-        # Очищаем дефолтный пример мода, чтобы он не мешал
         rm -rf forge-project/src/main/java/com/example/examplemod
 
     - name: Inject HitboxMod Code
       run: |
-        # Создаем правильную папку внутри скачанного проекта
         mkdir -p forge-project/src/main/java/com/example/hitboxmod
-        
-        # Копируем твой файл с кодом туда
         cp src/main/java/com/example/hitboxmod/HitboxMod.java forge-project/src/main/java/com/example/hitboxmod/HitboxMod.java
 
     - name: Configure mods.toml
       run: |
-        # Перезаписываем mods.toml на наш
         cat << 'EOF' > forge-project/src/main/resources/META-INF/mods.toml
         modLoader="javafml"
         loaderVersion="[36,)"
@@ -72,6 +65,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: HitboxMod-Forge-1.16.5
-        path: forge-project/build/libs/*-shadow.jar
-        # Если shadow-jar не создался, берем обычный jar:
-        # path: forge-project/build/libs/*.jar
+        path: forge-project/build/libs/*.jar
