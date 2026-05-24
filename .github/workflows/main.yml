@@ -13,91 +13,65 @@ jobs:
     - name: Setup Java 8
       uses: actions/setup-java@v4
       with:
-        distribution: 'zulu'
+        distribution: 'temurin'
         java-version: '8'
 
-    - name: Setup Clean Project Structure
+    - name: Download Clean Forge MDK
       run: |
-        # Создаем правильные папки прямо в корне
-        mkdir -p src/main/java/com/example/hitboxmod
-        mkdir -p src/main/resources/META-INF
+        # Скачиваем официальный проверенный шаблон для 1.16.5
+        curl -L -o forge-mdk.zip https://maven.minecraftforge.net/net/minecraftforge/forge/1.16.5-36.2.34/forge-1.16.5-36.2.34-mdk.zip
+        mkdir forge-project
+        unzip forge-mdk.zip -d forge-project
         
-        # Если твой файл случайно сохранился в корне, переносим его на место
-        if [ -f "HitboxMod.java" ]; then
-          mv HitboxMod.java src/main/java/com/example/hitboxmod/HitboxMod.java
-        fi
+        # Очищаем дефолтный пример мода, чтобы он не мешал
+        rm -rf forge-project/src/main/java/com/example/examplemod
 
-    - name: Create mods.toml
+    - name: Inject HitboxMod Code
       run: |
-        cat << 'EOF' > src/main/resources/META-INF/mods.toml
+        # Создаем правильную папку внутри скачанного проекта
+        mkdir -p forge-project/src/main/java/com/example/hitboxmod
+        
+        # Копируем твой файл с кодом туда
+        cp src/main/java/com/example/hitboxmod/HitboxMod.java forge-project/src/main/java/com/example/hitboxmod/HitboxMod.java
+
+    - name: Configure mods.toml
+      run: |
+        # Перезаписываем mods.toml на наш
+        cat << 'EOF' > forge-project/src/main/resources/META-INF/mods.toml
         modLoader="javafml"
         loaderVersion="[36,)"
         license="MIT"
         [[mods]]
         modId="hitboxmod"
-        version="1.0.0"
+        version="1.0"
         displayName="Hitbox Modifier"
         authors="Developer"
         description="INS - увеличить, DEL - уменьшить."
         [[dependencies.hitboxmod]]
         modId="forge"
         mandatory=true
-        versionRange="[36.2.0,)"
+        versionRange="[36.2.34,)"
         ordering="NONE"
         side="BOTH"
         [[dependencies.hitboxmod]]
         modId="minecraft"
         mandatory=true
-        versionRange="[1.16.5, 1.17)"
+        versionRange="[1.16.5]"
         ordering="NONE"
         side="BOTH"
         EOF
 
-    - name: Create build.gradle
+    - name: Build with Gradle
       run: |
-        cat << 'EOF' > build.gradle
-        buildscript {
-            repositories {
-                maven { url = 'https://maven.minecraftforge.net/' }
-                mavenCentral()
-            }
-            dependencies {
-                classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.1.+'
-            }
-        }
-        apply plugin: 'net.minecraftforge.gradle'
-        version = '1.0'
-        group = 'com.example.hitboxmod'
-        archivesBaseName = 'hitboxmod'
-        java.toolchain.languageVersion = JavaLanguageVersion.of(8)
-        minecraft {
-            mappings channel: 'official', version: '1.16.5'
-        }
-        dependencies {
-            minecraft 'net.minecraftforge:forge:1.16.5-36.2.34'
-        }
-        jar {
-            manifest {
-                attributes([
-                    "Specification-Title": "hitboxmod",
-                    "Specification-Version": "1",
-                    "Implementation-Title": project.name,
-                    "Implementation-Version": project.version
-                ])
-            }
-        }
-        EOF
-
-    - name: Download Gradle Wrapper
-      run: |
-        npm install -g local-gradle-wrapper
-        gradle wrapper --gradle-version 7.4.2
-
-    - name: Build Mod Jar
-      run: ./gradlew build
+        cd forge-project
+        chmod +x gradlew
+        ./gradlew genEclipseRuns --no-daemon || true
+        ./gradlew build --no-daemon
 
     - name: Upload Finished Jar
       uses: actions/upload-artifact@v4
       with:
         name: HitboxMod-Forge-1.16.5
-        path: build/libs/*.jar
+        path: forge-project/build/libs/*-shadow.jar
+        # Если shadow-jar не создался, берем обычный jar:
+        # path: forge-project/build/libs/*.jar
